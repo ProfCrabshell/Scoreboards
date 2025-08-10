@@ -5,14 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Song Contest Voting</title>
   <link rel="stylesheet" href="style.css" />
-
-  <!-- Supabase (optional): uncomment and configure if using backend
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script>
-    window.SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
-    window.SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
-  </script>
-  -->
 </head>
 <body>
   <div id="backdrop"></div>
@@ -59,9 +51,9 @@
 
             <div class="save-box">
               <button id="save-config">Save Config Locally</button>
-              <button id="load-config">Load Config From File</button>
-              <input id="load-config-input" type="file" accept="application/json" hidden />
               <button id="download-config">Download Config JSON</button>
+              <button id="download-share-file" class="primary">Download Share File</button>
+              <p class="small">The Share File includes the full competition data and code for easy voter import.</p>
             </div>
           </div>
         </div>
@@ -98,14 +90,10 @@
             <button id="load-by-code" class="primary">Load</button>
           </div>
           <div class="col">
-            <label>Voting Country Name
-              <input id="voter-country" type="text" placeholder="Spain" />
+            <label>Or Load Share File (JSON)
+              <input id="load-share-file" type="file" accept="application/json" />
             </label>
-            <label>Vote Type</label>
-            <div class="radio-row">
-              <label><input type="radio" name="vote-type" value="jury" checked /> Jury</label>
-              <label><input type="radio" name="vote-type" value="televote" /> Televote</label>
-            </div>
+            <p class="small">Voters: import the file the organiser sent you. This will load the competition automatically.</p>
           </div>
         </div>
       </div>
