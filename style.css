@@ -1,0 +1,141 @@
+:root{
+  --bg-dark: rgba(0,0,0,0.55);
+  --accent: #ff6a00;
+  --muted: #b0b0b0;
+}
+*{box-sizing:border-box;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
+body{margin:0;color:#fff;background:#111;min-height:100vh;overflow-x:hidden}
+#backdrop{
+  position:fixed;inset:0;background:url('assets/bg.jpg') center/cover no-repeat;
+  filter:brightness(0.55);z-index:-2;
+}
+.topbar{
+  position:sticky;top:0;background:linear-gradient(180deg,rgba(0,0,0,0.75),transparent);
+  padding:16px 20px;backdrop-filter:saturate(120%) blur(6px)
+}
+h1{margin:0 0 10px;font-weight:700}
+.mode-switch button{
+  margin-right:8px;padding:10px 14px;border-radius:8px;border:1px solid #fff3;
+  background:transparent;color:#fff;cursor:pointer
+}
+.mode-switch .active{background:var(--accent);border-color:transparent}
+main{padding:20px;max-width:1100px;margin:0 auto}
+.panel{display:none}
+.panel.active{display:block}
+.card{
+  background:var(--bg-dark);border:1px solid #fff2;border-radius:12px;padding:16px;margin:16px 0;
+  box-shadow:0 6px 24px #0007
+}
+.flex{display:flex;gap:18px;flex-wrap:wrap}
+.col{flex:1;min-width:280px}
+label{display:block;margin:8px 0 6px}
+input[type="text"], select{
+  width:100%;padding:10px;border-radius:8px;border:1px solid #fff2;background:#1b1b1b;color:#fff
+}
+.file-label input{display:block;margin-top:6px}
+.primary{background:var(--accent);border:none;color:#fff;padding:10px 14px;border-radius:8px;cursor:pointer}
+.danger{background:#b00020;border:none;color:#fff;padding:10px 14px;border-radius:8px;cursor:pointer}
+.list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.country-item{display:flex;align-items:center;gap:10px;background:#0008;padding:8px;border-radius:10px;border:1px solid #fff2}
+.country-item .flag{width:34px;height:24px;object-fit:cover;border:1px solid #fff4}
+.country-item .name{flex:1}
+.country-item .remove{background:#333;border:1px solid #fff2;color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}
+
+.share-box,.save-box{background:#0006;border:1px dashed #fff3;padding:10px;border-radius:10px;margin:10px 0}
+.small{color:#ddd;font-size:0.95rem}
+
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:10px}
+.score-row{display:flex;align-items:center;justify-content:space-between;background:#0008;border:1px solid #fff2;border-radius:10px;padding:8px}
+.score-row .left{display:flex;align-items:center;gap:10px}
+.score-row .flag{width:40px;height:28px;object-fit:cover;border:1px solid #fff4;border-radius:4px}
+.score-row select{width:90px}
+
+.result-line{
+  position:relative;overflow:hidden;border-radius:12px;margin:10px 0;
+  border:1px solid #fff3;background:#000b
+}
+.result-line .flag-bg{
+  position:absolute;inset:0;background-size:cover;background-position:center;opacity:0.18;filter:saturate(120%) blur(1px)
+}
+.result-line .text{
+  position:relative;padding:14px 16px;
+  animation:pop 500ms ease both;color:#fff;text-shadow:0 1px 2px #000
+}
+@keyframes pop{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+footer{opacity:.7;text-align:center;margin:24px 0}
+
+/* Presentation overlay */
+.pres.hidden{display:none}
+.pres{
+  position:fixed; inset:0; z-index:1000; display:flex; flex-direction:column;
+  color:#fff;
+}
+.pres-backdrop{
+  position:absolute; inset:0;
+  background:linear-gradient(0deg,rgba(0,0,0,.55),rgba(0,0,0,.55));
+  z-index:-1;
+}
+.pres-stage{
+  flex:1; display:flex; align-items:center; justify-content:center;
+  padding:40px; overflow:hidden;
+}
+.pres-slide{
+  width:min(1100px,92vw); height:min(680px,80vh);
+  position:relative; border:1px solid #fff3; border-radius:16px;
+  background:rgba(0,0,0,.45);
+  box-shadow:0 10px 36px #0008; overflow:hidden;
+  padding:28px;
+  animation:slideIn 500ms ease both;
+}
+.pres-slide .flag-bg{
+  position:absolute; inset:0; opacity:.15; background-size:cover; background-position:center;
+  filter:saturate(120%) blur(1px);
+}
+.pres-slide .content{position:relative; height:100%; display:flex; flex-direction:column}
+
+.pres-title{font-size:42px; font-weight:800; margin:0 0 16px}
+.pres-subtitle{font-size:20px; color:#ddd; margin:0 0 10px}
+
+.award-header{display:flex; align-items:center; gap:12px; margin-bottom:18px}
+.award-header img{width:56px; height:40px; object-fit:cover; border:1px solid #fff4; border-radius:6px}
+.award-header .name{font-size:30px; font-weight:700}
+
+.points-grid{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px;
+}
+.point-card{
+  background:#0008; border:1px solid #fff2; border-radius:12px; padding:12px;
+  display:flex; align-items:center; gap:12px; opacity:0; transform:translateY(12px);
+}
+.point-card.revealed{animation:popUp 400ms ease both}
+.point-card img{width:48px; height:34px; object-fit:cover; border:1px solid #fff3; border-radius:6px}
+.point-card .country{flex:1; font-size:18px; font-weight:600}
+.point-card .pts{font-size:24px; font-weight:800; color:#ffcc33; text-shadow:0 1px 2px #000}
+
+.table{
+  width:100%; background:#0008; border:1px solid #fff2; border-radius:12px; overflow:hidden
+}
+.table .thead,.table .row{display:grid; grid-template-columns: 90px 64px 1fr 120px; align-items:center}
+.table .thead{background:#111a; font-weight:700}
+.table .cell{padding:10px 12px; border-bottom:1px solid #fff1}
+.table img.flag{width:42px; height:28px; object-fit:cover; border:1px solid #fff3; border-radius:4px}
+
+.pres-hud{
+  position:fixed; inset:auto 0 0 0; padding:10px 16px; display:flex; align-items:center; justify-content:space-between;
+  background:linear-gradient(180deg,transparent,rgba(0,0,0,.45));
+}
+#pres-exit{
+  background:#b00020; border:none; color:#fff; width:42px; height:42px; border-radius:10px; font-size:28px; cursor:pointer
+}
+.pres-help{color:#ddd; font-size:14px}
+
+@keyframes slideIn{from{opacity:0; transform:translateY(18px)} to{opacity:1; transform:translateY(0)}}
+@keyframes popUp{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)}}
+
+.bump{animation:bump 500ms ease both}
+@keyframes bump{
+  0%{transform:scale(1); background:#1a1a1a}
+  50%{transform:scale(1.02); background:#262000}
+  100%{transform:scale(1); background:#1a1a1a}
+}
