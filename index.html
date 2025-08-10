@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Competition — Organise & Vote</title>
+  <style>
+    /* Basic reset */
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial;}
+
+    /* Background image: put your background image file next to this HTML and name it `background.png` */
+    body{
+      background-image: url('background.png');
+      background-size: cover;
+      background-position: center center;
+      background-attachment: fixed;
+      backdrop-filter: blur(4px) brightness(0.6);
+      color: #f2f2f2;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    /* translucent panel */
+    .app{
+      max-width:1100px;margin:30px auto;padding:24px;background:rgba(10,10,10,0.45);border-radius:12px;border:1px solid rgba(255,255,255,0.06);
+      box-shadow:0 10px 30px rgba(0,0,0,0.6);
+    }
+
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+    h1{font-size:18px;margin:0}
+    nav button{margin-left:8px}
+
+    .cols{display:flex;gap:18px}
+    .col{flex:1;background:rgba(255,255,255,0.03);padding:14px;border-radius:8px}
+
+    label{display:block;margin-top:8px;font-size:12px;color:#ddd}
+    input[type=text],select,textarea{width:100%;padding:8px;margin-top:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.3);color:#fff}
+    input[type=file]{margin-top:6px}
+    button{padding:8px 12px;border-radius:8px;border:0;background:#2b8cff;color:white;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.08)}
+
+    .list{max-height:300px;overflow:auto;margin-top:12px}
+    .entry{display:flex;align-items:center;gap:10px;padding:8px;border-radius:6px;margin-bottom:8px;background:rgba(0,0,0,0.25)}
+    .entry img{width:48px;height:32px;object-fit:cover;border-radius:4px;border:1px solid rgba(255,255,255,0.06)}
+    .entry .meta{flex:1}
+
+    .big{font-size:20px}
+    .result-line{margin:6px 0;padding:8px;background:rgba(255,255,255,0.02);border-radius:6px}
+
+    .flag-animation{position:relative;height:120px;margin-top:12px;overflow:hidden;border-radius:8px}
+    .flag-animation img{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:auto;height:100%;opacity:0.15;filter:grayscale(20%)}
+    .reveal{animation:reveal-anim 1s ease forwards}
+    @keyframes reveal-anim{from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)}}
+
+    .scores{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+    .scorecard{background:rgba(0,0,0,0.35);padding:8px;border-radius:8px;min-width:240px}
+
+    .small{font-size:12px;color:#cfcfcf}
+
+    footer{margin-top:14px;font-size:12px;color:#cfcfcf}
+
+    .codebox{font-family:monospace;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;word-break:break-all}
+
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Competition manager — Organise & Vote</h1>
+      <nav>
+        <button id="show-organise">Organise a competition</button>
+        <button id="show-vote">Vote in a competition</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="organise">
+        <div class="cols">
+          <div class="col">
+            <h2 class="big">Organiser panel</h2>
+            <label>Competition name</label>
+            <input id="comp-name" type="text" placeholder="My friendly contest">
+
+            <label>Add country / flag</label>
+            <input id="country-name" type="text" placeholder="Country name">
+            <input id="country-flag" type="file" accept="image/*">
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button id="add-country">Add country</button>
+              <button id="clear-countries" class="ghost">Clear countries</button>
+            </div>
+
+            <div class="list" id="countries-list" aria-live="polite"></div>
+
+            <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.06)">
+
+            <label>Generate competition code (share this with voters)</label>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+              <button id="generate-code">Generate code</button>
+              <div class="codebox" id="comp-code">(no code yet)</div>
+            </div>
+
+            <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.06)">
+
+            <label>Paste vote submissions here (one per line)</label>
+            <textarea id="vote-submissions" rows="6" placeholder="Paste vote strings received from voters, one per line"></textarea>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button id="import-votes">Import votes</button>
+              <button id="clear-votes" class="ghost">Clear votes</button>
+            </div>
+
+          </div>
+
+          <div class="col">
+            <h2 class="big">Results & display</h2>
+            <div class="flag-animation" id="flag-anim"></div>
+
+            <div class="scores">
+              <div class="scorecard">
+                <div class="small">Jury votes (per awarding country)</div>
+                <div id="jury-lines"></div>
+              </div>
+              <div class="scorecard">
+                <div class="small">Televotes (per awarding country)</div>
+                <div id="tv-lines"></div>
+              </div>
+              <div class="scorecard">
+                <div class="small">Totals</div>
+                <div id="totals"></div>
+              </div>
+            </div>
+
+            <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.06)">
+            <div class="small">Export current competition and results</div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button id="export-full">Copy export JSON</button>
+              <button id="download-full" class="ghost">Download .json</button>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <section id="vote" style="display:none;margin-top:14px">
+        <div class="cols">
+          <div class="col">
+            <h2 class="big">Vote in a competition</h2>
+            <label>Your country</label>
+            <input id="voter-country" type="text" placeholder="Country giving the points">
+            <label>Vote type</label>
+            <select id="vote-type"><option value="jury">Jury vote</option><option value="televote">Televote</option></select>
+
+            <label>Paste competition code</label>
+            <textarea id="paste-code" rows="4" placeholder="Paste the competition code you received"></textarea>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button id="load-comp">Load competition</button>
+              <button id="reset-vote" class="ghost">Reset</button>
+            </div>
+
+            <div id="vote-area" style="margin-top:12px;display:none">
+              <div class="small">Assign top 10 places using dropdowns. 12 / 10 / 8 / 7 / 6 / 5 / 4 / 3 / 2 / 1</div>
+              <div id="ranking-ui" style="margin-top:8px"></div>
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <button id="submit-vote">Create vote string (copy & send to organiser)</button>
+                <div class="codebox" id="vote-code">(no vote created)</div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="col">
+            <h2 class="big">Preview</h2>
+            <div id="comp-preview"></div>
+            <div class="small" style="margin-top:8px">Instructions: Organiser creates a competition and shares the code. Voters paste that code here, select their country and whether they are jury or televote, assign points (1-12 values as per standard), then copy the produced vote string and send it to the organiser by any channel. The organiser pastes those vote strings into the organiser panel and imports them to aggregate results.</div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer>
+      This is a static, client-side demo. No server required. To receive votes automatically you need a server or use automation (see instructions below the page). Place your background image file named <strong>background.png</strong> next to this HTML.
+    </footer>
+  </div>
+
+<script>
+// Utility helpers
+function toBase64(obj){return btoa(unescape(encodeURIComponent(JSON.stringify(obj))))}
+function fromBase64(s){try{return JSON.parse(decodeURIComponent(escape(atob(s))));}catch(e){return null}}
+
+// State
+let competition = {name:'',countries:[],results:[]}; // countries: {id,name,flagDataUrl}
+let importedVotes = [];
+
+// DOM refs
+const countriesList = document.getElementById('countries-list');
+const compCodeBox = document.getElementById('comp-code');
+const compNameInput = document.getElementById('comp-name');
+const flagAnim = document.getElementById('flag-anim');
+const juryLines = document.getElementById('jury-lines');
+const tvLines = document.getElementById('tv-lines');
+const totalsDiv = document.getElementById('totals');
+
+// navigation
+document.getElementById('show-organise').addEventListener('click', ()=>{document.getElementById('organise').style.display='block';document.getElementById('vote').style.display='none'})
+document.getElementById('show-vote').addEventListener('click', ()=>{document.getElementById('organise').style.display='none';document.getElementById('vote').style.display='block'})
+
+// Add country
+document.getElementById('add-country').addEventListener('click', async ()=>{
+  const name = document.getElementById('country-name').value.trim();
+  const file = document.getElementById('country-flag').files[0];
+  if(!name || !file){alert('Give a country name and a flag image.');return}
+  const dataUrl = await readFileAsDataURL(file);
+  const id = Math.random().toString(36).slice(2,9);
+  competition.countries.push({id,name,flag:dataUrl});
+  document.getElementById('country-name').value='';document.getElementById('country-flag').value='';
+  renderCountries();
+});
+
+function readFileAsDataURL(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file)})}
+
+function renderCountries(){countriesList.innerHTML='';competition.countries.forEach((c,i)=>{
+  const div=document.createElement('div');div.className='entry';
+  div.innerHTML=`<img src="${c.flag}" alt="${c.name} flag"><div class="meta"><div style=\"font-weight:600\">${c.name}</div><div class='small'>id: ${c.id}</div></div><div><button data-idx='${i}' class='remove'>Remove</button></div>`;
+  countriesList.appendChild(div);
+});
+Array.from(document.querySelectorAll('.remove')).forEach(btn=>btn.addEventListener('click', e=>{const idx=+e.target.dataset.idx;competition.countries.splice(idx,1);renderCountries()}));
+}
+
+// clear countries
+document.getElementById('clear-countries').addEventListener('click', ()=>{if(confirm('Clear all countries?')){competition.countries=[];renderCountries();}})
+
+// generate code
+document.getElementById('generate-code').addEventListener('click', ()=>{
+  competition.name = compNameInput.value.trim()||'My competition';
+  if(competition.countries.length<2){alert('Add at least two countries');return}
+  // produce compact object
+  const payload = {v:1,name:competition.name,countries:competition.countries.map(c=>({id:c.id,name:c.name,flag:c.flag}))};
+  const code = toBase64(payload);
+  compCodeBox.textContent = code;
+});
+
+// Vote panel: load comp
+document.getElementById('load-comp').addEventListener('click', ()=>{
+  const txt=document.getElementById('paste-code').value.trim();
+  const data=fromBase64(txt);
+  if(!data || !data.countries){alert('Invalid competition code');return}
+  // store client-side
+  window._loadedComp = data;
+  renderVotePreview(data);
+  buildRankingUI(data);
+  document.getElementById('vote-area').style.display='block';
+});
+
+function renderVotePreview(data){const out=document.getElementById('comp-preview');out.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap">${data.countries.map(c=>`<div style=\"display:flex;align-items:center;gap:8px;min-width:120px;\"><img src='${c.flag}' style='width:64px;height:44px;object-fit:cover;border-radius:4px'/> <div><div style='font-weight:600'>${c.name}</div><div class='small'>${c.id}</div></div></div>`).join('')}</div>`}
+
+function buildRankingUI(data){const container=document.getElementById('ranking-ui');container.innerHTML='';
+  const points=[12,10,8,7,6,5,4,3,2,1];
+  for(let i=0;i<10;i++){
+    const row=document.createElement('div');row.style.display='flex';row.style.gap='8px';row.style.marginTop='8px';
+    const label=document.createElement('div');label.style.width='40px';label.textContent=points[i];
+    const sel=document.createElement('select');sel.dataset.pos=points[i];
+    const emptyOpt=document.createElement('option');emptyOpt.value='';emptyOpt.textContent='-- select country --';sel.appendChild(emptyOpt);
+    data.countries.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name;sel.appendChild(o)});
+    row.appendChild(label);row.appendChild(sel);container.appendChild(row);
+  }
+}
+
+// submit vote
+document.getElementById('submit-vote').addEventListener('click', ()=>{
+  const voter = document.getElementById('voter-country').value.trim();
+  const type = document.getElementById('vote-type').value;
+  if(!voter){alert('Enter your country name');return}
+  const selects = Array.from(document.querySelectorAll('#ranking-ui select'));
+  const points=[12,10,8,7,6,5,4,3,2,1];
+  const assigned = {};
+  for(let i=0;i<selects.length;i++){
+    const val=selects[i].value; if(!val){alert('Fill all top10 slots');return}
+    if(assigned[val]){alert('Duplicate country assignment detected');return}
+    assigned[val]=points[i];
+  }
+  const comp = window._loadedComp; if(!comp){alert('Load competition first');return}
+  // Create compact vote object
+  const vote = {v:1,compName:comp.name,voterCountry:voter,type:type,awards:assigned};
+  const code = toBase64(vote);
+  document.getElementById('vote-code').textContent = code;
+});
+
+// reset vote
+document.getElementById('reset-vote').addEventListener('click', ()=>{document.getElementById('paste-code').value='';document.getElementById('voter-country').value='';document.getElementById('vote-area').style.display='none';document.getElementById('comp-preview').innerHTML='';window._loadedComp=null;})
+
+// organiser: import votes
+document.getElementById('import-votes').addEventListener('click', ()=>{
+  const raw = document.getElementById('vote-submissions').value.trim();
+  if(!raw){alert('Paste vote strings first');return}
+  const lines = raw.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  let added=0;let errors=0;
+  lines.forEach(l=>{
+    const v = fromBase64(l);
+    if(!v || !v.voterCountry || !v.awards){errors++;return}
+    importedVotes.push({raw:l,parsed:v});added++;
+  });
+  alert(`Imported ${added} vote(s), ${errors} error(s)`);
+  document.getElementById('vote-submissions').value='';
+  recomputeResults();
+});
+
+// clear votes
+document.getElementById('clear-votes').addEventListener('click', ()=>{if(confirm('Clear imported votes?')){importedVotes=[];recomputeResults();}})
+
+// recompute results and render lines
+function recomputeResults(){
+  // reset
+  const countries = competition.countries; if(countries.length===0){juryLines.innerHTML='(no countries)';tvLines.innerHTML='(no countries)';totalsDiv.innerHTML='(no countries)';return}
+  // prepare map id->name,flag
+  const byId = {};countries.forEach(c=>byId[c.id]={name:c.name,flag:c.flag,pointsJury:0,pointsTV:0});
+
+  // We'll also collect per awarding country the lines
+  const juryByGiver = {};const tvByGiver = {};
+
+  importedVotes.forEach(voteEntry=>{
+    const v = voteEntry.parsed;
+    const type = v.type; const giver = v.voterCountry;
+    Object.entries(v.awards).forEach(([targetId,pts])=>{
+      if(byId[targetId]){
+        if(type==='jury'){byId[targetId].pointsJury += Number(pts);} else {byId[targetId].pointsTV += Number(pts);}
+        // record line for detailed display
+        const line = {from:giver,to:byId[targetId].name,points:Number(pts),flag:byId[targetId].flag};
+        if(type==='jury'){juryByGiver[giver]=juryByGiver[giver]||[];juryByGiver[giver].push(line);} else {tvByGiver[giver]=tvByGiver[giver]||[];tvByGiver[giver].push(line)}
+      }
+    });
+  });
+
+  // render lines
+  juryLines.innerHTML='';tvLines.innerHTML='';totalsDiv.innerHTML='';
+  Object.keys(juryByGiver).forEach(giver=>{
+    const block = document.createElement('div');block.className='result-line';
+    block.innerHTML = `<div style=\"font-weight:700\">${giver} — Jury</div>` + juryByGiver[giver].map(l=>`<div class='small'>The country receiving ${l.points} points from ${giver} is ${l.to}</div>`).join('');
+    block.addEventListener('click',()=>playFlag(lazyPickFlag(juryByGiver[giver])));
+    juryLines.appendChild(block);
+  });
+  Object.keys(tvByGiver).forEach(giver=>{
+    const block = document.createElement('div');block.className='result-line';
+    block.innerHTML = `<div style=\"font-weight:700\">${giver} — Televote</div>` + tvByGiver[giver].map(l=>`<div class='small'>The country receiving ${l.points} points from ${giver} is ${l.to}</div>`).join('');
+    block.addEventListener('click',()=>playFlag(lazyPickFlag(tvByGiver[giver])));
+    tvLines.appendChild(block);
+  });
+
+  // totals: show each country with jury, tv, combined
+  const rows=[];
+  Object.values(byId).forEach(c=>rows.push(c));
+  rows.sort((a,b)=> (b.pointsJury+b.pointsTV) - (a.pointsJury+a.pointsTV));
+  rows.forEach(r=>{
+    const el=document.createElement('div');el.className='result-line';
+    el.innerHTML=`<div style='display:flex;gap:12px;align-items:center'><img src='${r.flag}' style='width:46px;height:30px;object-fit:cover;border-radius:4px'/> <div><div style='font-weight:700'>${r.name}</div><div class='small'>Jury: ${r.pointsJury} &nbsp; Televote: ${r.pointsTV} &nbsp; Total: ${r.pointsJury+r.pointsTV}</div></div></div>`;
+    totalsDiv.appendChild(el);
+  });
+}
+
+function lazyPickFlag(list){ // pick first entry's flag
+  return (list && list[0] && list[0].flag) || null
+}
+
+function playFlag(flagDataUrl){
+  flagAnim.innerHTML = '';
+  if(!flagDataUrl) return;
+  const img = document.createElement('img');img.src = flagDataUrl;img.className='reveal';flagAnim.appendChild(img);
+}
+
+// export / download
+document.getElementById('export-full').addEventListener('click', ()=>{
+  const payload = {competition,importedVotes};
+  navigator.clipboard.writeText(JSON.stringify(payload, null, 2)).then(()=>alert('Export copied to clipboard'))
+});
+
+document.getElementById('download-full').addEventListener('click', ()=>{
+  const payload = {competition,importedVotes};
+  const blob = new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='competition_export.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+});
+
+// small helper: when user pastes a comp code in organise->comp-code area, also load its counties into competition for result computation
+compCodeBox.addEventListener('click', ()=>{const txt=compCodeBox.textContent.trim();const obj=fromBase64(txt);if(obj && obj.countries){competition.name=obj.name;competition.countries=obj.countries;renderCountries();alert('Competition loaded into organiser from code (locally)')}})
+
+// initial sample text
+compCodeBox.title='Click to load the generated code into the organiser (local only)';
+
+// Keep recompute when importedVotes changes
+setInterval(()=>{recomputeResults()},1000);
+</script>
+</body>
+</html>
