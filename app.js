@@ -1,8 +1,3 @@
-// --- Optional Supabase init (uncomment when configured in index.html) ---
-// const sb = (window.SUPABASE_URL && window.SUPABASE_ANON_KEY)
-//   ? supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY)
-//   : null;
-
 // --- Utilities ---
 const $ = (sel, root=document) => root.querySelector(sel);
 const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
@@ -20,7 +15,7 @@ function saveStore(key, value) { localStorage.setItem(key, JSON.stringify(value)
 
 function genCode(maxLen=10) {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const len = Math.floor(6 + Math.random()*4); // 6-9 chars (<=10)
+  const len = Math.floor(6 + Math.random()*4); // 6-9 (<=10)
   let out = '';
   for (let i=0;i<len;i++) out += alphabet[Math.floor(Math.random()*alphabet.length)];
   return out.slice(0, maxLen);
@@ -98,7 +93,7 @@ $('#comp-name').addEventListener('input', e => {
 });
 
 // Generate + save config under code
-$('#generate-code').onclick = async () => {
+$('#generate-code').onclick = () => {
   if (!draftConfig.name) { alert('Enter a competition name first.'); return; }
   if (draftConfig.countries.length < 10) {
     if (!confirm('Fewer than 10 countries added. Continue?')) return;
@@ -106,24 +101,17 @@ $('#generate-code').onclick = async () => {
   const code = genCode(10);
   draftConfig.code = code;
 
-  // Local storage (default)
+  // Save in local store
   const configs = loadStore(STORAGE_KEYS.CONFIGS, {});
   configs[code] = structuredClone(draftConfig);
   saveStore(STORAGE_KEYS.CONFIGS, configs);
 
-  // Supabase upsert (optional)
-  // if (sb) {
-  //   const payload = { code, name: draftConfig.name, countries: draftConfig.countries };
-  //   const { error } = await sb.from('competitions').upsert(payload);
-  //   if (error) { alert('Supabase save failed: ' + error.message); }
-  // }
-
   $('#share-code').textContent = code;
   history.replaceState(null, '', `#${code}`);
-  alert('Code generated and saved.');
+  alert('Code generated and saved in this browser.');
 };
 
-// Copy link with code
+// Copy link with code (organiser convenience)
 $('#copy-link').onclick = async () => {
   if (!draftConfig.code) { alert('Generate a code first.'); return; }
   const url = `${location.origin}${location.pathname}#${draftConfig.code}`;
@@ -131,35 +119,13 @@ $('#copy-link').onclick = async () => {
   alert('Link copied.');
 };
 
-// Save draft config to local file
+// Save draft config to local file (organiser backup)
 $('#save-config').onclick = () => {
   const blob = new Blob([JSON.stringify(draftConfig, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `${draftConfig.name || 'competition'}.json`;
   a.click();
-};
-
-// Load config from file (replaces draft)
-$('#load-config').onclick = () => $('#load-config-input').click();
-$('#load-config-input').onchange = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  try {
-    const txt = await file.text();
-    const cfg = JSON.parse(txt);
-    if (!cfg.countries?.length) throw new Error('Invalid config file.');
-    draftConfig = cfg;
-    saveStore(STORAGE_KEYS.DRAFT_CONFIG, draftConfig);
-    $('#comp-name').value = draftConfig.name || '';
-    $('#share-code').textContent = draftConfig.code || '—';
-    renderCountries();
-    alert('Config loaded.');
-  } catch (err) {
-    alert('Failed to load config: ' + err.message);
-  } finally {
-    e.target.value = '';
-  }
 };
 
 // Download stored config JSON by code
@@ -175,7 +141,33 @@ $('#download-config').onclick = () => {
   a.click();
 };
 
-// --- Submissions storage helpers (local) ---
+// New: Download Share File (single portable file)
+$('#download-share-file').onclick = () => {
+  try {
+    const share = buildShareFileFromDraft();
+    const blob = new Blob([JSON.stringify(share, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${share.name || 'competition'}_${share.code}_share.json`;
+    a.click();
+  } catch (e) {
+    alert(e.message);
+  }
+};
+
+function buildShareFileFromDraft() {
+  if (!draftConfig?.code) throw new Error('Generate a competition code first.');
+  if (!draftConfig?.countries?.length) throw new Error('Add at least one country.');
+  return {
+    kind: 'song-contest-share',
+    version: 1,
+    code: draftConfig.code,
+    name: draftConfig.name || '',
+    countries: draftConfig.countries // includes base64 flags
+  };
+}
+
+// --- Submissions storage helpers (local offline transport) ---
 function getSubmissionsMap() { return loadStore(STORAGE_KEYS.SUBMISSIONS, {}); }
 function saveSubmission(code, submission) {
   const map = getSubmissionsMap();
@@ -207,62 +199,27 @@ $('#import-submission').onchange = async (e) => {
 };
 
 // Clear all submissions for current code
-$('#clear-submissions').onclick = async () => {
+$('#clear-submissions').onclick = () => {
   if (!draftConfig.code) { alert('No competition code yet.'); return; }
-
-  // Local clear
   const map = getSubmissionsMap();
   delete map[draftConfig.code];
   saveStore(STORAGE_KEYS.SUBMISSIONS, map);
-
-  // Optional Supabase delete
-  // if (sb) {
-  //   const { error } = await sb.from('submissions').delete().eq('code', draftConfig.code);
-  //   if (error) alert('Supabase clear failed: ' + error.message);
-  // }
-
   $('#results').innerHTML = '';
   alert('All submissions cleared for this competition.');
 };
 
-// Compute and show results (local or Supabase)
+// Compute and show results
 const tplResult = $('#result-line-tpl');
 
-$('#compute-results').onclick = async () => {
+$('#compute-results').onclick = () => {
   const code = draftConfig.code;
   if (!code) { alert('Generate a code first.'); return; }
 
-  // Load config
-  let cfg = null;
   const configs = loadStore(STORAGE_KEYS.CONFIGS, {});
-  cfg = configs[code] || draftConfig;
-
-  // Optional: fetch from Supabase
-  // if (sb) {
-  //   const { data, error } = await sb.from('competitions').select('*').eq('code', code).single();
-  //   if (data) cfg = { code: data.code, name: data.name, countries: data.countries };
-  //   if (error) alert('Supabase config fetch failed: ' + error.message);
-  // }
-
+  const cfg = configs[code] || draftConfig;
   if (!cfg) { alert('Config not found.'); return; }
 
-  // Load submissions
-  let subs = loadSubmissions(code);
-
-  // Optional: from Supabase
-  // if (sb) {
-  //   const { data, error } = await sb.from('submissions').select('*').eq('code', code);
-  //   if (!error && data) {
-  //     // Normalize to local shape
-  //     subs = data.map(d => ({
-  //       code: d.code,
-  //       fromCountry: d.from_country,
-  //       voteType: d.vote_type,
-  //       points: d.points
-  //     }));
-  //   }
-  // }
-
+  const subs = loadSubmissions(code);
   const countries = cfg.countries.map(c => c.name);
 
   const totals = {};
@@ -332,53 +289,70 @@ function enforceUniquePoints() {
   });
 }
 
-async function loadByCode(code) {
-  // Local
+function loadByCodeLocal(code) {
   const configs = loadStore(STORAGE_KEYS.CONFIGS, {});
   const cfg = configs[code];
-
-  // Optional Supabase
-  // let data = null;
-  // if (sb) {
-  //   const res = await sb.from('competitions').select('*').eq('code', code).single();
-  //   if (!res.error && res.data) data = res.data;
-  // }
-  // const cfgFromSb = data ? { code: data.code, name: data.name, countries: data.countries } : null;
-
-  const finalCfg = cfg /*|| cfgFromSb*/;
-  if (!finalCfg) { alert('Competition code not found on this device. The organiser must share the config file or host it.'); return; }
-  loadedVoteConfig = finalCfg;
-  renderScoreboard(finalCfg);
+  if (!cfg) { alert('Competition code not found on this device. If you received a share file, import it first.'); return; }
+  loadedVoteConfig = cfg;
+  renderScoreboard(cfg);
 }
 
 $('#load-by-code').onclick = () => {
   const code = $('#vote-code').value.trim().toUpperCase();
   if (!code) { alert('Enter a code.'); return; }
-  loadByCode(code);
+  loadByCodeLocal(code);
 };
 
-window.addEventListener('load', async () => {
+// New: Voter can load a Share File directly on the Vote tab
+$('#load-share-file').onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const txt = await file.text();
+    const share = JSON.parse(txt);
+    validateShareFile(share);
+
+    // Persist in localStorage under its code so Load by code works too
+    const configs = loadStore(STORAGE_KEYS.CONFIGS, {});
+    configs[share.code] = {
+      code: share.code,
+      name: share.name,
+      countries: share.countries
+    };
+    saveStore(STORAGE_KEYS.CONFIGS, configs);
+
+    // Auto-fill code and load scoreboard
+    $('#vote-code').value = share.code;
+    loadByCodeLocal(share.code);
+
+    alert(`Competition "${share.name}" loaded from share file.`);
+  } catch (err) {
+    alert('Failed to load share file: ' + err.message);
+  } finally {
+    e.target.value = '';
+  }
+};
+
+function validateShareFile(share) {
+  if (!share || share.kind !== 'song-contest-share' || share.version !== 1) {
+    throw new Error('Invalid share file format.');
+  }
+  if (!share.code || !share.countries?.length) {
+    throw new Error('Share file missing code or countries.');
+  }
+}
+
+// Auto-load by URL hash for organiser convenience
+window.addEventListener('load', () => {
   const hashCode = location.hash.replace('#','').trim().toUpperCase();
   if (hashCode) {
     $('#share-code').textContent = hashCode;
-
-    // Local populate
     const configs = loadStore(STORAGE_KEYS.CONFIGS, {});
     if (configs[hashCode]) {
       draftConfig = configs[hashCode];
       $('#comp-name').value = draftConfig.name || '';
       renderCountries();
     }
-
-    // Optional Supabase fetch into draft
-    // if (sb) {
-    //   const { data } = await sb.from('competitions').select('*').eq('code', hashCode).single();
-    //   if (data) {
-    //     draftConfig = { code: data.code, name: data.name, countries: data.countries };
-    //     $('#comp-name').value = draftConfig.name || '';
-    //     renderCountries();
-    //   }
-    // }
     $('#vote-code').value = hashCode;
   }
 });
@@ -389,12 +363,12 @@ $('#clear-scores').onclick = () => {
   enforceUniquePoints();
 };
 
-// Submit votes -> download JSON + save locally
-$('#submit-votes').onclick = async () => {
+// Submit votes -> export JSON for organiser to import
+$('#submit-votes').onclick = () => {
   const fromCountry = $('#voter-country').value.trim();
-  if (!loadedVoteConfig) { alert('Load a competition by code first.'); return; }
+  if (!loadedVoteConfig) { alert('Load a competition by code or share file first.'); return; }
   if (!fromCountry) { alert('Enter the voting country name.'); return; }
-  const voteType = $('input[name="vote-type"]:checked').value;
+  const voteType = $('input[name="vote-type"]:checked').value; // 'jury' or 'televote'
 
   const required = ['12','10','8','7','6','5','4','3','2','1'];
   const selected = $$('.score-row').map(row => {
@@ -417,33 +391,20 @@ $('#submit-votes').onclick = async () => {
   const submission = {
     code: loadedVoteConfig.code,
     fromCountry,
-    voteType,
+    voteType, // 'jury' | 'televote'
     points: pointsMap,
     timestamp: new Date().toISOString()
   };
 
-  // Download JSON as transport
+  // Download JSON to send to organiser
   const blob = new Blob([JSON.stringify(submission, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `${fromCountry}_${voteType}_votes_${loadedVoteConfig.code}.json`;
   a.click();
 
-  // Save locally so organiser on same device can aggregate
+  // Also store locally (useful if organiser and voter share a device)
   saveSubmission(submission.code, submission);
-
-  // Optional: Supabase insert
-  // if (sb) {
-  //   const payload = {
-  //     code: submission.code,
-  //     from_country: submission.fromCountry,
-  //     vote_type: submission.voteType,
-  //     points: submission.points
-  //   };
-  //   const { error } = await sb.from('submissions').insert(payload);
-  //   if (error) alert('Supabase submit failed: ' + error.message);
-  // }
-
   $('#submit-confirm').textContent = `Submitted ${voteType} votes from ${fromCountry}. A JSON file was downloaded — send it to the organiser.`;
 };
 
@@ -496,7 +457,6 @@ function rankingRows(countryNames, flagMap, totals){
     }));
 }
 
-// Build slide data
 function buildPresentationSlides() {
   const { cfg, flagMap, countryNames, televoteSubs, jurySubs } = getCurrentConfigForPresentation();
 
