@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Song Contest Voting</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Supabase (optional): uncomment and configure if using backend
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+    window.SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co";
+    window.SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
+  </script>
+  -->
+</head>
+<body>
+  <div id="backdrop"></div>
+
+  <header class="topbar">
+    <h1>Song Contest Voting</h1>
+    <nav class="mode-switch">
+      <button id="btn-organise" class="active">Organise a Competition</button>
+      <button id="btn-vote">Vote in a Competition</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Organise -->
+    <section id="organise" class="panel active">
+      <div class="card">
+        <h2>Create / Edit Competition</h2>
+        <div class="flex">
+          <div class="col">
+            <label>Competition Name
+              <input id="comp-name" type="text" placeholder="Eurovision Night 2025" />
+            </label>
+
+            <div class="upload-row">
+              <label>Country Name
+                <input id="country-name" type="text" placeholder="France" />
+              </label>
+              <label class="file-label">Flag (PNG/JPG/SVG)
+                <input id="flag-file" type="file" accept="image/*" />
+              </label>
+              <button id="add-country" class="primary">Add Country</button>
+            </div>
+
+            <div class="list" id="countries-list"></div>
+          </div>
+
+          <div class="col">
+            <div class="share-box">
+              <button id="generate-code" class="primary">Generate Competition Code</button>
+              <p><b>Competition Code:</b> <span id="share-code">—</span></p>
+              <p class="small">Share this code with voters. They will enter it on the Vote page.</p>
+              <button id="copy-link">Copy Vote Link</button>
+            </div>
+
+            <div class="save-box">
+              <button id="save-config">Save Config Locally</button>
+              <button id="load-config">Load Config From File</button>
+              <input id="load-config-input" type="file" accept="application/json" hidden />
+              <button id="download-config">Download Config JSON</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Collect & Display Results</h2>
+        <div class="flex">
+          <div class="col">
+            <label>Import Submission (JSON)
+              <input id="import-submission" type="file" accept="application/json" />
+            </label>
+            <p class="small">Use this to add Jury/Televote results submitted by each country.</p>
+            <button id="clear-submissions" class="danger">Clear All Submissions</button>
+          </div>
+          <div class="col">
+            <button id="compute-results" class="primary">Compute Results</button>
+            <button id="start-presentation" class="primary">Start Presentation</button>
+            <div id="results"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vote -->
+    <section id="vote" class="panel">
+      <div class="card">
+        <h2>Enter Competition</h2>
+        <div class="flex">
+          <div class="col">
+            <label>Competition Code
+              <input id="vote-code" type="text" placeholder="e.g. AB12CD34" />
+            </label>
+            <button id="load-by-code" class="primary">Load</button>
+          </div>
+          <div class="col">
+            <label>Voting Country Name
+              <input id="voter-country" type="text" placeholder="Spain" />
+            </label>
+            <label>Vote Type</label>
+            <div class="radio-row">
+              <label><input type="radio" name="vote-type" value="jury" checked /> Jury</label>
+              <label><input type="radio" name="vote-type" value="televote" /> Televote</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Scoreboard</h2>
+        <p class="small">Assign each of these points exactly once: 12, 10, 8, 7, 6, 5, 4, 3, 2, 1.</p>
+        <div id="scoreboard" class="scoreboard"></div>
+        <div class="score-actions">
+          <button id="clear-scores" class="danger">Clear</button>
+          <button id="submit-votes" class="primary">Submit Votes</button>
+        </div>
+        <div id="submit-confirm" class="small"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Made for GitHub Pages — Front‑end only demo.</p>
+  </footer>
+
+  <!-- Templates -->
+  <template id="country-item-tpl">
+    <div class="country-item">
+      <img class="flag" />
+      <span class="name"></span>
+      <button class="remove">Remove</button>
+    </div>
+  </template>
+
+  <template id="score-row-tpl">
+    <div class="score-row">
+      <div class="left">
+        <img class="flag" />
+        <span class="name"></span>
+      </div>
+      <select class="points">
+        <option value="">—</option>
+        <option>12</option><option>10</option><option>8</option>
+        <option>7</option><option>6</option><option>5</option>
+        <option>4</option><option>3</option><option>2</option><option>1</option>
+      </select>
+    </div>
+  </template>
+
+  <template id="result-line-tpl">
+    <div class="result-line">
+      <div class="flag-bg"></div>
+      <div class="text"></div>
+    </div>
+  </template>
+
+  <!-- Presentation overlay -->
+  <div id="presentation" class="pres hidden" aria-hidden="true">
+    <div class="pres-backdrop"></div>
+    <div class="pres-stage" id="pres-stage"></div>
+    <div class="pres-hud">
+      <button id="pres-exit" title="Exit (Esc)">×</button>
+      <div class="pres-help">Space/Enter/→ next • ← back • Esc exit</div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
